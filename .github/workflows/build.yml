@@ -1,0 +1,90 @@
+name: Build Meshtastic Firmware for Nibble ESP32
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout nibble-esp32-firmware
+        uses: actions/checkout@v4
+        with:
+          path: nibble-esp32-firmware
+
+      - name: Get latest Meshtastic firmware tag
+        id: meshtastic-tag
+        run: |
+          LATEST_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/meshtastic/firmware.git \
+            | grep -oP 'refs/tags/v[\d.]+$' \
+            | head -1 \
+            | sed 's|refs/tags/||')
+          echo "tag=${LATEST_TAG}" >> "$GITHUB_OUTPUT"
+          echo "Latest Meshtastic firmware tag: ${LATEST_TAG}"
+
+      - name: Checkout Meshtastic firmware
+        uses: actions/checkout@v4
+        with:
+          repository: meshtastic/firmware
+          ref: ${{ steps.meshtastic-tag.outputs.tag }}
+          path: firmware
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PlatformIO
+        run: pip install -U platformio
+
+      - name: Install Espressif32 platform
+        run: platformio platform install espressif32
+
+      - name: Copy nibble variant files into firmware tree
+        env:
+          TARGET: nibble-esp32
+        run: |
+          TARGET_DIR="firmware/variants/esp32s3/${TARGET}"
+          cp --update=all nibble-esp32-firmware/variant.h "${TARGET_DIR}/variant.h"
+          cp --update=all nibble-esp32-firmware/platformio.ini "${TARGET_DIR}/platformio.ini"
+
+      - name: Build firmware
+        env:
+          TARGET: nibble-esp32
+        run: platformio run --project-dir firmware -e "${TARGET}"
+
+      - name: Collect and checksum artifacts
+        id: artifacts
+        env:
+          MESHTASTIC_TAG: ${{ steps.meshtastic-tag.outputs.tag }}
+        run: |
+          mkdir -p output
+          cp firmware/.pio/build/*.bin output/ 2>/dev/null || true
+          cp firmware/.pio/build/${{ env.TARGET || 'nibble-esp32' }}/*.bin output/ 2>/dev/null || true
+          cd output
+          sha256sum *.bin | tee sha256sums.txt
+          echo "artifact_count=$(ls -1 *.bin 2>/dev/null | wc -l)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nibble-esp32-firmware-${{ steps.meshtastic-tag.outputs.tag }}
+          path: output/*
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MESHTASTIC_TAG: ${{ steps.meshtastic-tag.outputs.tag }}
+        run: |
+          RELEASE_TAG="build-${MESHTASTIC_TAG}-$(date +%Y%m%d-%H%M%S)"
+          gh release create "${RELEASE_TAG}" \
+            --repo "${{ github.repository }}" \
+            --title "Nibble ESP32 Firmware (Meshtastic ${MESHTASTIC_TAG})" \
+            --notes "Automated build based on Meshtastic firmware ${MESHTASTIC_TAG}." \
+            output/*

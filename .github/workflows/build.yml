@@ -42,7 +42,7 @@ jobs:
 
       - name: Copy nibble variant files into firmware tree
         run: |
-          TARGET_DIR="${GITHUB_WORKSPACE}/meshtastic/variants/esp32s3/nibble-esp32"
+          TARGET_DIR="${GITHUB_WORKSPACE}/meshtastic/variants/esp32s3/nibble_esp32"
           cp --update=all ${GITHUB_WORKSPACE}/variant.h "${TARGET_DIR}/variant.h"
           cp --update=all ${GITHUB_WORKSPACE}/platformio.ini "${TARGET_DIR}/platformio.ini"
 

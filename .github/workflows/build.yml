@@ -22,9 +22,8 @@ jobs:
 
       - name: Checkout Meshtastic firmware
         run: |
-          ls -lah
-          git clone https://github.com/meshtastic/firmware
-          cd firmware
+          git clone https://github.com/meshtastic/firmware ${GITHUB_WORKSPACE}/meshtastic
+          cd ${GITHUB_WORKSPACE}/meshtastic
           git checkout refs/tags/${{ steps.meshtastic-tag.outputs.tag }}
 
       - name: Set up Python
@@ -40,22 +39,21 @@ jobs:
 
       - name: Copy nibble variant files into firmware tree
         run: |
-          TARGET_DIR="firmware/variants/esp32s3/nibble-esp32"
+          TARGET_DIR="${GITHUB_WORKSPACE}/meshtastic/variants/esp32s3/nibble-esp32"
           cp --update=all variant.h "${TARGET_DIR}/variant.h"
           cp --update=all platformio.ini "${TARGET_DIR}/platformio.ini"
 
       - name: Build firmware
-        run: platformio run --project-dir firmware -e "nibble-esp32"
+        run: platformio run --project-dir ${GITHUB_WORKSPACE}/meshtastic -e "nibble-esp32"
 
       - name: Collect and checksum artifacts
         id: artifacts
         env:
           MESHTASTIC_TAG: ${{ steps.meshtastic-tag.outputs.tag }}
         run: |
-          mkdir -p output
-          cp firmware/.pio/build/*.bin output/ 2>/dev/null || true
-          cp firmware/.pio/build/nibble-esp32/*.bin output/ 2>/dev/null || true
-          cd output
+          mkdir -p ${GITHUB_WORKSPACE}/output
+          cp ${GITHUB_WORKSPACE}/meshtastic/.pio/build/nibble-esp32/*.bin ${GITHUB_WORKSPACE}/output/ 2>/dev/null || true
+          cd ${GITHUB_WORKSPACE}/output
           sha256sum *.bin | tee sha256sums.txt
           echo "artifact_count=$(ls -1 *.bin 2>/dev/null | wc -l)" >> "$GITHUB_OUTPUT"
 
@@ -71,7 +69,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           MESHTASTIC_TAG: ${{ steps.meshtastic-tag.outputs.tag }}
         run: |
-          RELEASE_TAG="build-${MESHTASTIC_TAG}-$(date +%Y%m%d-%H%M%S)"
+          RELEASE_TAG="nibble-esp32-${MESHTASTIC_TAG}"
           gh release create "${RELEASE_TAG}" \
             --repo "${{ github.repository }}" \
             --title "Nibble ESP32 Firmware (Meshtastic ${MESHTASTIC_TAG})" \

@@ -20,9 +20,8 @@ jobs:
         id: meshtastic-tag
         run: |
           LATEST_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/meshtastic/firmware.git \
-            | grep -oP 'refs/tags/v[\d.]+$' \
             | head -1 \
-            | sed 's|refs/tags/||')
+            | cut -d'/' -f3)
           echo "tag=${LATEST_TAG}" >> "$GITHUB_OUTPUT"
           echo "Latest Meshtastic firmware tag: ${LATEST_TAG}"
 
@@ -46,17 +45,13 @@ jobs:
         run: platformio platform install espressif32
 
       - name: Copy nibble variant files into firmware tree
-        env:
-          TARGET: nibble-esp32
         run: |
-          TARGET_DIR="firmware/variants/esp32s3/${TARGET}"
+          TARGET_DIR="firmware/variants/esp32s3/nibble-esp32"
           cp --update=all nibble-esp32-firmware/variant.h "${TARGET_DIR}/variant.h"
           cp --update=all nibble-esp32-firmware/platformio.ini "${TARGET_DIR}/platformio.ini"
 
       - name: Build firmware
-        env:
-          TARGET: nibble-esp32
-        run: platformio run --project-dir firmware -e "${TARGET}"
+        run: platformio run --project-dir firmware -e "nibble-esp32"
 
       - name: Collect and checksum artifacts
         id: artifacts
@@ -65,7 +60,7 @@ jobs:
         run: |
           mkdir -p output
           cp firmware/.pio/build/*.bin output/ 2>/dev/null || true
-          cp firmware/.pio/build/${{ env.TARGET || 'nibble-esp32' }}/*.bin output/ 2>/dev/null || true
+          cp firmware/.pio/build/nibble-esp32/*.bin output/ 2>/dev/null || true
           cd output
           sha256sum *.bin | tee sha256sums.txt
           echo "artifact_count=$(ls -1 *.bin 2>/dev/null | wc -l)" >> "$GITHUB_OUTPUT"

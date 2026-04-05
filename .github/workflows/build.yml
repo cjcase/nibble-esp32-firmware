@@ -13,8 +13,6 @@ jobs:
     steps:
       - name: Checkout nibble-esp32-firmware
         uses: actions/checkout@v4
-        with:
-          path: nibble-esp32-firmware
 
       - name: Get latest Meshtastic firmware tag
         id: meshtastic-tag
@@ -30,7 +28,6 @@ jobs:
         with:
           repository: meshtastic/firmware
           ref: ${{ steps.meshtastic-tag.outputs.tag }}
-          path: firmware
           submodules: recursive
 
       - name: Set up Python

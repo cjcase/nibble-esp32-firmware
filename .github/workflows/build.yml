@@ -11,9 +11,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout nibble-esp32-firmware
-        uses: actions/checkout@v4
-
       - name: Get latest Meshtastic firmware tag
         id: meshtastic-tag
         run: |
@@ -28,6 +25,7 @@ jobs:
         with:
           repository: meshtastic/firmware
           ref: ${{ steps.meshtastic-tag.outputs.tag }}
+          path: meshtastic
           submodules: recursive
 
       - name: Set up Python
@@ -43,12 +41,12 @@ jobs:
 
       - name: Copy nibble variant files into firmware tree
         run: |
-          TARGET_DIR="firmware/variants/esp32s3/nibble-esp32"
-          cp --update=all nibble-esp32-firmware/variant.h "${TARGET_DIR}/variant.h"
-          cp --update=all nibble-esp32-firmware/platformio.ini "${TARGET_DIR}/platformio.ini"
+          TARGET_DIR="meshtastic/firmware/variants/esp32s3/nibble-esp32"
+          cp --update=all variant.h "${TARGET_DIR}/variant.h"
+          cp --update=all platformio.ini "${TARGET_DIR}/platformio.ini"
 
       - name: Build firmware
-        run: platformio run --project-dir firmware -e "nibble-esp32"
+        run: platformio run --project-dir meshtastic/firmware -e "nibble-esp32"
 
       - name: Collect and checksum artifacts
         id: artifacts

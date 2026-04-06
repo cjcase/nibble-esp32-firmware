@@ -15,6 +15,26 @@ Requirements: `bash`, `git`, `python3`, `python3-venv`
 3. Run build.sh
 4. Flash `firmware-nibble-esp32-VERSION.bin` with [Retia's Nugget Web Flasher](https://nugget.dev)
 
+## Linux Troubleshooting
+
+If you get a "permission error" or "interface not found" error while trying to flash the Nibble, the most likely issue is missing udev rules.  
+[You can read a comprehensive guide on udev rules here](https://wiki.archlinux.org/title/Udev#Introduction_to_udev_rules).  
+For a quick fix follow this:
+
+1. Create a new udev rule file for esp32 in `/etc/udev/rules.d/99-esp32.rules` with the following content:
+```udev
+#esp32-s3
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", ATTRS{manufacturer}=="Espressif *", TAG+="uaccess", MODE="0660"
+```
+
+2. Reload udev rules 
+```
+$ sudo udevadm control --reload-rules
+$ sudo udevadm trigger
+```
+
+3. Finally, follow the web flashing instructions in the "Software" section [from here.](https://retia.io/blogs/news/how-to-make-a-nibble-simple-cutie-meshtastic-node-for-c3)
+
 ## Disclaimer
 
 This is just a personal convenience repository dedicated to automated working builds of Meshtastic firmware for Retia's 38C3 version of their Nibble node (esp32s3 + rfm95).
